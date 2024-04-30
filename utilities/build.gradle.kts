@@ -5,7 +5,3 @@
 plugins {
     id("glomers.kotlin-library-conventions")
 }
-
-dependencies {
-    api(project(":list"))
-}
