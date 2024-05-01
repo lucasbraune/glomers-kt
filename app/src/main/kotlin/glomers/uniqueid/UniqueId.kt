@@ -1,4 +1,4 @@
-package glomers.app
+package glomers.uniqueid
 
 import glomers.protocol.Generate
 import glomers.protocol.GenerateOk

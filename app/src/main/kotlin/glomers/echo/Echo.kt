@@ -1,4 +1,4 @@
-package glomers.app
+package glomers.echo
 
 import glomers.protocol.Echo
 import glomers.protocol.EchoOk

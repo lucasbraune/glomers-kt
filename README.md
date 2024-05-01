@@ -13,9 +13,9 @@ Build and run project:
 ./gradlew installDist
 ```
 
-Run project against "unique ID" workload:
+Run project against "broadcast A" workload:
 
 ```bash
-./maelstrom/maelstrom test -w unique-ids --bin ./app/build/install/app/bin/app --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition 
+./maelstrom/maelstrom test -w broadcast --bin ./app/build/install/app/bin/app --node-count 1 --time-limit 20 --rate 10
 ```
 

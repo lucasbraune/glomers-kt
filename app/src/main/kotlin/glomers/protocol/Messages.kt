@@ -45,3 +45,45 @@ data class GenerateOk(
     override val msgId: Int,
     override val inReplyTo: Int,
 ) : ResponseBody
+
+@Serializable
+@SerialName("broadcast")
+data class Broadcast(
+    val message: Int,
+    override val msgId: Int,
+) : RequestBody
+
+@Serializable
+@SerialName("broadcast_ok")
+data class BroadcastOk(
+    override val msgId: Int,
+    override val inReplyTo: Int,
+) : ResponseBody
+
+@Serializable
+@SerialName("read")
+data class Read(
+    override val msgId: Int,
+) : RequestBody
+
+@Serializable
+@SerialName("read_ok")
+data class ReadOk(
+    val messages: List<Int>,
+    override val msgId: Int,
+    override val inReplyTo: Int,
+) : ResponseBody
+
+@Serializable
+@SerialName("topology")
+data class Topology(
+    val topology: Map<String, List<String>>,
+    override val msgId: Int,
+) : RequestBody
+
+@Serializable
+@SerialName("topology_ok")
+data class TopologyOk(
+    override val msgId: Int,
+    override val inReplyTo: Int,
+) : ResponseBody

@@ -3,4 +3,6 @@
  */
 package glomers.app
 
-fun main() = serveUniqueId()
+import glomers.broadcast.serveBroadcast
+
+fun main() = serveBroadcast()
