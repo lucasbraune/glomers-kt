@@ -34,7 +34,7 @@ fun serveEcho() = runBlocking {
                     )
                 ))
             }
-            is EchoOk, is InitOk -> { log("Unexpected message: $it") }
+            else -> { log("Unexpected message: $it") }
         }
     }
 }

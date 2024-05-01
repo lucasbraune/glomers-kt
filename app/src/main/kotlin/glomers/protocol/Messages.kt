@@ -31,3 +31,17 @@ data class EchoOk(
     override val msgId: Int,
     override val inReplyTo: Int,
 ) : ResponseBody
+
+@Serializable
+@SerialName("generate")
+data class Generate(
+    override val msgId: Int,
+) : RequestBody
+
+@Serializable
+@SerialName("generate_ok")
+data class GenerateOk(
+    val id: Int,
+    override val msgId: Int,
+    override val inReplyTo: Int,
+) : ResponseBody

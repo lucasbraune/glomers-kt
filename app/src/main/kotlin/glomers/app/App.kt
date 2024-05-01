@@ -3,4 +3,4 @@
  */
 package glomers.app
 
-fun main() = serveEcho()
+fun main() = serveUniqueId()
