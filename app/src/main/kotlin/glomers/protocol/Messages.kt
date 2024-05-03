@@ -87,3 +87,17 @@ data class TopologyOk(
     override val msgId: Int,
     override val inReplyTo: Int,
 ) : ResponseBody
+
+@Serializable
+@SerialName("gossip")
+data class Gossip(
+    val messages: List<Int>,
+    override val msgId: Int,
+) : RequestBody
+
+@Serializable
+@SerialName("gossip_ok")
+data class GossipOk(
+    override val inReplyTo: Int,
+) : ResponseBody
+

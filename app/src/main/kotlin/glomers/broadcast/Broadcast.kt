@@ -1,11 +1,13 @@
 package glomers.broadcast
 
+import chunk
 import glomers.protocol.Broadcast
 import glomers.protocol.BroadcastOk
+import glomers.protocol.Client
+import glomers.protocol.Gossip
 import glomers.protocol.Init
 import glomers.protocol.InitOk
 import glomers.protocol.Message
-import glomers.protocol.MessageBody
 import glomers.protocol.MessageHandler
 import glomers.protocol.Read
 import glomers.protocol.ReadOk
@@ -13,30 +15,57 @@ import glomers.protocol.ResponseBody
 import glomers.protocol.Topology
 import glomers.protocol.TopologyOk
 import glomers.protocol.log
-import glomers.protocol.send
+import glomers.protocol.reply
 import glomers.protocol.serve
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
-
-fun reply(request: Message, responseBody: MessageBody) {
-    send(
-        Message(
-            src = request.dest,
-            dest = request.src,
-            body = responseBody,
-        )
-    )
-}
+import kotlin.coroutines.EmptyCoroutineContext
 
 data class ClusterInfo(val nodeId: String, val nodeIds: List<String>)
 
-class BroadcastHandler : MessageHandler {
-    private val msgId = AtomicInteger()
+@OptIn(ExperimentalCoroutinesApi::class)
+class BroadcastHandler : MessageHandler, AutoCloseable {
+    private val nextMsgId = AtomicInteger()
     private val clusterInfo = CompletableDeferred<ClusterInfo>()
+    private val client: Client by lazy { Client(clusterInfo.getCompleted().nodeId) }
     private val topology = CompletableDeferred<Map<String, List<String>>>()
     private val messages = CopyOnWriteArrayList<Int>()
+    private val leaderId: String by lazy { clusterInfo.getCompleted().nodeIds.first() }
+    private val isLeader: Boolean by lazy {
+        val (nodeId, nodeIds) = clusterInfo.getCompleted()
+        nodeId == nodeIds.first()
+    }
+    private val channel by lazy { Channel<Int>() }
+    private val scope: CoroutineScope = CoroutineScope(EmptyCoroutineContext)
+    private val chunkedChannel: ReceiveChannel<List<Int>> by lazy {
+        scope.chunk(channel, 500)
+    }
+
+    override fun close() {
+        scope.cancel()
+    }
+
+    suspend fun broadcastToFollowers() = coroutineScope {
+        val followerIds = clusterInfo.getCompleted().nodeIds.drop(1)
+        for (chunk in chunkedChannel) {
+            log("Leader broadcast: $chunk")
+            for (followerId in followerIds) {
+                launch {
+                    client.rpc(followerId, Gossip(chunk, nextMsgId.getAndIncrement()))
+                }
+            }
+        }
+    }
 
     override suspend fun invoke(message: Message) {
         when (message.body) {
@@ -46,23 +75,33 @@ class BroadcastHandler : MessageHandler {
                 reply(message, InitOk(inReplyTo = msgId))
             }
 
-            is ResponseBody -> TODO()
+            is ResponseBody -> {
+                client.handle(message.body)
+            }
 
             is Broadcast -> {
                 messages.add(message.body.message)
                 reply(
-                    message, BroadcastOk(
-                        msgId = msgId.getAndIncrement(),
-                        inReplyTo = message.body.msgId,
+                    message,
+                    BroadcastOk(
+                        msgId = nextMsgId.getAndIncrement(),
+                        inReplyTo = message.body.msgId
                     )
                 )
+                if (!isLeader && message.src != leaderId) {
+                    client.rpc(
+                        leaderId,
+                        Broadcast(message.body.message, nextMsgId.getAndIncrement())
+                    )
+                }
             }
 
             is Read -> {
                 reply(
-                    message, ReadOk(
+                    message,
+                    ReadOk(
                         messages = messages,
-                        msgId = msgId.getAndIncrement(),
+                        msgId = nextMsgId.getAndIncrement(),
                         inReplyTo = message.body.msgId,
                     )
                 )
@@ -72,7 +111,7 @@ class BroadcastHandler : MessageHandler {
                 topology.complete(message.body.topology)
                 reply(
                     message, TopologyOk(
-                        msgId = msgId.getAndIncrement(),
+                        msgId = nextMsgId.getAndIncrement(),
                         inReplyTo = message.body.msgId
                     )
                 )
@@ -83,6 +122,13 @@ class BroadcastHandler : MessageHandler {
     }
 }
 
-fun serveBroadcast() = runBlocking {
-    serve(handler = BroadcastHandler())
+fun serveBroadcast() = runBlocking(Dispatchers.Default) {
+    BroadcastHandler().use {
+        launch {
+            serve(handler = it)
+        }
+        launch {
+            it.broadcastToFollowers()
+        }
+    }
 }
