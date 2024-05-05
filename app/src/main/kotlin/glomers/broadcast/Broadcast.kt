@@ -4,9 +4,10 @@ import chunk
 import glomers.protocol.Broadcast
 import glomers.protocol.BroadcastOk
 import glomers.protocol.Client
-import glomers.protocol.Gossip
+import glomers.protocol.InternalBroadcast
 import glomers.protocol.Init
 import glomers.protocol.InitOk
+import glomers.protocol.InternalBroadcastOk
 import glomers.protocol.Message
 import glomers.protocol.MessageHandler
 import glomers.protocol.Read
@@ -18,56 +19,54 @@ import glomers.protocol.log
 import glomers.protocol.reply
 import glomers.protocol.serve
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 data class ClusterInfo(val nodeId: String, val nodeIds: List<String>)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class BroadcastHandler : MessageHandler, AutoCloseable {
+class BroadcastNode : MessageHandler {
     private val nextMsgId = AtomicInteger()
+
     private val clusterInfo = CompletableDeferred<ClusterInfo>()
+    private val nodeId: String by lazy { clusterInfo.getCompleted().nodeId }
     private val client: Client by lazy { Client(clusterInfo.getCompleted().nodeId) }
+
     private val topology = CompletableDeferred<Map<String, List<String>>>()
     private val messages = CopyOnWriteArrayList<Int>()
+
     private val leaderId: String by lazy { clusterInfo.getCompleted().nodeIds.first() }
-    private val isLeader: Boolean by lazy {
-        val (nodeId, nodeIds) = clusterInfo.getCompleted()
-        nodeId == nodeIds.first()
-    }
-    private val channel by lazy { Channel<Int>() }
-    private val scope: CoroutineScope = CoroutineScope(EmptyCoroutineContext)
-    private val chunkedChannel: ReceiveChannel<List<Int>> by lazy {
-        scope.chunk(channel, 500)
-    }
 
-    override fun close() {
-        scope.cancel()
-    }
+    private val channel: Channel<Int> = Channel()
 
-    suspend fun broadcastToFollowers() = coroutineScope {
-        val followerIds = clusterInfo.getCompleted().nodeIds.drop(1)
-        for (chunk in chunkedChannel) {
-            log("Leader broadcast: $chunk")
-            for (followerId in followerIds) {
+    suspend fun work() = coroutineScope {
+        val (nodeId, nodeIds) = clusterInfo.await()
+        val otherNodeIds = nodeIds.filter { it != nodeId }
+        val messageChunks = chunk(channel, delayBetweenBroadcasts)
+        for (messageChunk in messageChunks) {
+            log("Internal broadcast: $messageChunk")
+            for (otherNodeId in otherNodeIds) {
                 launch {
-                    client.rpc(followerId, Gossip(chunk, nextMsgId.getAndIncrement()))
+                    client.rpc(
+                        otherNodeId,
+                        InternalBroadcast(messageChunk, nextMsgId.getAndIncrement())
+                    )
                 }
             }
         }
     }
 
-    override suspend fun invoke(message: Message) {
+    suspend fun serve() = serve(handler = this)
+
+    override suspend fun handle(message: Message) {
         when (message.body) {
             is Init -> {
                 val (nodeId, nodeIds, msgId) = message.body
@@ -80,7 +79,8 @@ class BroadcastHandler : MessageHandler, AutoCloseable {
             }
 
             is Broadcast -> {
-                messages.add(message.body.message)
+                log("$nodeId received: ${message.body.message}")
+                val added = messages.addIfAbsent(message.body.message)
                 reply(
                     message,
                     BroadcastOk(
@@ -88,12 +88,21 @@ class BroadcastHandler : MessageHandler, AutoCloseable {
                         inReplyTo = message.body.msgId
                     )
                 )
-                if (!isLeader && message.src != leaderId) {
-                    client.rpc(
-                        leaderId,
-                        Broadcast(message.body.message, nextMsgId.getAndIncrement())
-                    )
+                if (added) {
+                    if (nodeId == leaderId) {
+                        channel.send(message.body.message)
+                    } else {
+                        client.rpc(
+                            leaderId,
+                            Broadcast(message.body.message, nextMsgId.getAndIncrement())
+                        )
+                    }
                 }
+            }
+
+            is InternalBroadcast -> {
+                messages.addAllAbsent(message.body.messages)
+                reply(message, InternalBroadcastOk(message.body.msgId))
             }
 
             is Read -> {
@@ -117,18 +126,19 @@ class BroadcastHandler : MessageHandler, AutoCloseable {
                 )
             }
 
-            else -> log("Unexpected message: $message")
+            else -> {
+                log("Unexpected message: $message")
+            }
         }
+    }
+
+    private companion object {
+        val delayBetweenBroadcasts: Duration = 500.milliseconds
     }
 }
 
 fun serveBroadcast() = runBlocking(Dispatchers.Default) {
-    BroadcastHandler().use {
-        launch {
-            serve(handler = it)
-        }
-        launch {
-            it.broadcastToFollowers()
-        }
-    }
+    val node = BroadcastNode()
+    launch { node.serve() }
+    launch { node.work() }
 }

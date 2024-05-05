@@ -28,7 +28,7 @@ class UniqueIdHandler : MessageHandler {
         return generatedIdsCount.getAndIncrement() * nodeIds.size + index
     }
 
-    override suspend fun invoke(it: Message) {
+    override suspend fun handle(it: Message) {
         when (it.body) {
             is Init -> {
                 val (nodeId, nodeIds, msgId) = it.body

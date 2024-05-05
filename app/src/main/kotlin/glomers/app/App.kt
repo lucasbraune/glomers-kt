@@ -5,4 +5,6 @@ package glomers.app
 
 import glomers.broadcast.serveBroadcast
 
-fun main() = serveBroadcast()
+fun main() {
+    serveBroadcast()
+}

@@ -89,15 +89,15 @@ data class TopologyOk(
 ) : ResponseBody
 
 @Serializable
-@SerialName("gossip")
-data class Gossip(
+@SerialName("internal_broadcast")
+data class InternalBroadcast(
     val messages: List<Int>,
     override val msgId: Int,
 ) : RequestBody
 
 @Serializable
-@SerialName("gossip_ok")
-data class GossipOk(
+@SerialName("internal_broadcast_ok")
+data class InternalBroadcastOk(
     override val inReplyTo: Int,
 ) : ResponseBody
 

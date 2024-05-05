@@ -16,6 +16,5 @@ Build and run project:
 Run project against "broadcast A" workload:
 
 ```bash
-./gradlew installDist && ./maelstrom/maelstrom test -w broadcast --bin ./app/build/install/app/bin/app --node-count 1 --time-limit 20 --rate 10
+./gradlew installDist && ./maelstrom/maelstrom test -w broadcast --bin ./app/build/install/app/bin/app --node-count 5 --time-limit 20 --rate 10
 ```
-
