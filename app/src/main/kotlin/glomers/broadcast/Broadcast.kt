@@ -4,6 +4,8 @@ import chunk
 import glomers.protocol.Broadcast
 import glomers.protocol.BroadcastOk
 import glomers.protocol.Client
+import glomers.protocol.Echo
+import glomers.protocol.Generate
 import glomers.protocol.InternalBroadcast
 import glomers.protocol.Init
 import glomers.protocol.InitOk
@@ -126,14 +128,12 @@ class BroadcastNode : MessageHandler {
                 )
             }
 
-            else -> {
-                log("Unexpected message: $message")
-            }
+            is Echo, is Generate -> log("Unexpected message: $message")
         }
     }
 
     private companion object {
-        val delayBetweenBroadcasts: Duration = 500.milliseconds
+        val delayBetweenBroadcasts: Duration = 300.milliseconds
     }
 }
 
