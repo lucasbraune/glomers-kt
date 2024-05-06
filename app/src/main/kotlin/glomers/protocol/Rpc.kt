@@ -2,7 +2,9 @@ package glomers.protocol
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration
 
 sealed interface RpcMessageBody : MessageBody {
     val msgId: Int?
@@ -31,12 +33,23 @@ fun reply(request: Message, responseBody: ResponseBody) {
 
 class Client(
     private val nodeId: String,
+    private val defaultTimeout: Duration? = null,
 ) {
     private val outstandingResponses = ConcurrentHashMap<Int, CompletableDeferred<ResponseBody>>()
 
     private fun send(dest: String, body: MessageBody) = send(Message(src = nodeId, dest, body))
 
-    suspend fun rpc(dest: String, request: RequestBody): ResponseBody {
+    suspend fun rpc(
+        dest: String,
+        request: RequestBody,
+        timeout: Duration? = defaultTimeout,
+    ): ResponseBody = if (timeout == null) {
+        doRpc(dest, request)
+    } else {
+        withTimeout(timeout) { doRpc(dest, request) }
+    }
+
+    private suspend fun doRpc(dest: String, request: RequestBody): ResponseBody {
         send(dest, request)
         val response = CompletableDeferred<ResponseBody>()
         outstandingResponses[request.msgId] = response

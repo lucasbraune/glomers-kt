@@ -20,6 +20,8 @@ import glomers.protocol.TopologyOk
 import glomers.protocol.log
 import glomers.protocol.reply
 import glomers.protocol.serve
+import glomers.util.RetryOptions
+import glomers.util.retry
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 data class ClusterInfo(val nodeId: String, val nodeIds: List<String>)
 
@@ -40,7 +43,9 @@ class BroadcastNode : MessageHandler {
 
     private val clusterInfo = CompletableDeferred<ClusterInfo>()
     private val nodeId: String by lazy { clusterInfo.getCompleted().nodeId }
-    private val client: Client by lazy { Client(clusterInfo.getCompleted().nodeId) }
+    private val client: Client by lazy {
+        Client(clusterInfo.getCompleted().nodeId, rpcTimeout)
+    }
 
     private val topology = CompletableDeferred<Map<String, List<String>>>()
     private val messages = CopyOnWriteArrayList<Int>()
@@ -57,10 +62,12 @@ class BroadcastNode : MessageHandler {
             log("Internal broadcast: $messageChunk")
             for (otherNodeId in otherNodeIds) {
                 launch {
-                    client.rpc(
-                        otherNodeId,
-                        InternalBroadcast(messageChunk, nextMsgId.getAndIncrement())
-                    )
+                    retry(infiniteRetries) {
+                        client.rpc(
+                            otherNodeId,
+                            InternalBroadcast(messageChunk, nextMsgId.getAndIncrement())
+                        )
+                    }
                 }
             }
         }
@@ -94,10 +101,15 @@ class BroadcastNode : MessageHandler {
                     if (nodeId == leaderId) {
                         channel.send(message.body.message)
                     } else {
-                        client.rpc(
-                            leaderId,
-                            Broadcast(message.body.message, nextMsgId.getAndIncrement())
-                        )
+                        try {
+                            client.rpc(
+                                leaderId,
+                                Broadcast(message.body.message, nextMsgId.getAndIncrement())
+                            )
+                        } catch (ex: Exception) {
+                            log("Unable to reach leader; broadcasting ${message.body.message}")
+                            channel.send(message.body.message)
+                        }
                     }
                 }
             }
@@ -134,6 +146,13 @@ class BroadcastNode : MessageHandler {
 
     private companion object {
         val delayBetweenBroadcasts: Duration = 300.milliseconds
+        val rpcTimeout = 300.milliseconds
+        val infiniteRetries = RetryOptions(
+            retries = Int.MAX_VALUE,
+            backoff = 200.milliseconds,
+            backoffMultiplier = 2.0,
+            maxBackoff = 1.seconds,
+        )
     }
 }
 

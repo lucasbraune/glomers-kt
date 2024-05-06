@@ -100,4 +100,3 @@ data class InternalBroadcast(
 data class InternalBroadcastOk(
     override val inReplyTo: Int,
 ) : ResponseBody
-
