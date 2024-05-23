@@ -6,9 +6,9 @@ import glomers.protocol.BroadcastOk
 import glomers.protocol.Client
 import glomers.protocol.Echo
 import glomers.protocol.Generate
-import glomers.protocol.InternalBroadcast
 import glomers.protocol.Init
 import glomers.protocol.InitOk
+import glomers.protocol.InternalBroadcast
 import glomers.protocol.InternalBroadcastOk
 import glomers.protocol.Message
 import glomers.protocol.MessageHandler
