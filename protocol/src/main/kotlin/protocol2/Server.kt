@@ -20,18 +20,18 @@ class MessageIO(
         namingStrategy = JsonNamingStrategy.SnakeCase
     }
 
-    fun send(message: Message<MessageBody>) {
-        println(json.encodeToString<Message<MessageBody>>(message))
+    fun send(message: Message<out MessageBody>) {
+        println(json.encodeToString<Message<out MessageBody>>(message))
     }
 
-    internal suspend fun receive(): Message<MessageBody>? = withContext(Dispatchers.IO) {
-        readlnOrNull()?.let { json.decodeFromString<Message<MessageBody>>(it) }
+    internal suspend fun receive(): Message<out MessageBody>? = withContext(Dispatchers.IO) {
+        readlnOrNull()?.let { json.decodeFromString<Message<out MessageBody>>(it) }
     }
 }
 
-internal suspend fun serveBasic(
+internal suspend fun serve(
     io: MessageIO,
-    handle: suspend (message: Message<MessageBody>) -> Unit,
+    handle: suspend (message: Message<out MessageBody>) -> Unit,
 ) = coroutineScope {
     while (true) {
         val message = io.receive() ?: break

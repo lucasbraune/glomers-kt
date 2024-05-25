@@ -6,21 +6,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
-interface RpcMessageBody : MessageBody {
-    val msgId: Int?
-        get() = null
-    val inReplyTo: Int?
-        get() = null
-}
-
-interface RequestBody : RpcMessageBody {
-    override val msgId: Int
-}
-
-interface ResponseBody : RpcMessageBody {
-    override val inReplyTo: Int
-}
-
 class Client(
     private val io: MessageIO,
     private val nodeId: Deferred<String>,
