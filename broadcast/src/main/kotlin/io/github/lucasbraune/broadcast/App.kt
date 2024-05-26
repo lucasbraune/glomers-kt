@@ -1,4 +1,4 @@
-package broadcast
+package io.github.lucasbraune.broadcast
 
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch

@@ -1,4 +1,4 @@
-package util
+package io.github.lucasbraune.util
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi

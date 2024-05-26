@@ -1,4 +1,4 @@
-package protocol2
+package io.github.lucasbraune.protocol
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.SerialName

@@ -1,5 +1,9 @@
-package protocol2
+package io.github.lucasbraune.protocol
 
+import io.github.lucasbraune.protocol.Level.DEBUG
+import io.github.lucasbraune.protocol.Level.ERROR
+import io.github.lucasbraune.protocol.Level.INFO
+import io.github.lucasbraune.protocol.Level.WARNING
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -9,19 +13,19 @@ private enum class Level {
 
 object Log {
     fun info(x: Any?) {
-        log(Level.INFO, x)
+        log(INFO, x)
     }
 
     fun debug(x: Any?) {
-        log(Level.DEBUG, x)
+        log(DEBUG, x)
     }
 
     fun warning(x: Any?) {
-        log(Level.WARNING, x)
+        log(WARNING, x)
     }
 
     fun error(x: Any?) {
-        log(Level.ERROR, x)
+        log(ERROR, x)
     }
 
     private fun log(level: Level, x: Any?) {

@@ -1,4 +1,4 @@
-package util
+package io.github.lucasbraune.util
 
 import kotlinx.coroutines.delay
 import kotlin.time.Duration

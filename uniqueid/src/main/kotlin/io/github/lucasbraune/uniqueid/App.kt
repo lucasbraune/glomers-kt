@@ -1,11 +1,11 @@
-package uniqueid
+package io.github.lucasbraune.uniqueid
 
 import kotlinx.serialization.modules.plus
-import protocol2.InitSerializersModule
-import protocol2.InitService
-import protocol2.MessageIO
-import protocol2.request
-import protocol2.serveRoutes
+import io.github.lucasbraune.protocol.InitSerializersModule
+import io.github.lucasbraune.protocol.InitService
+import io.github.lucasbraune.protocol.MessageIO
+import io.github.lucasbraune.protocol.request
+import io.github.lucasbraune.protocol.serveRoutes
 import java.util.concurrent.atomic.AtomicInteger
 
 class GeneratorService(
