@@ -1,22 +1,18 @@
 # Gossip Glomers - Distributed systems challenges
 
+Solutions to Fly.io's [distributed systems challenges](https://fly.io/dist-sys/).
+
+## Getting started
+
 Install Maelstrom and its [system dependencies](https://github.com/jepsen-io/maelstrom/blob/main/doc/01-getting-ready/index.md):
 
 ```bash
 brew install openjdk graphviz gnuplot
-curl -L https://github.com/jepsen-io/maelstrom/releases/download/v0.2.3/maelstrom.tar.bz2 | tar xf - -C build
+curl -L https://github.com/jepsen-io/maelstrom/releases/download/v0.2.3/maelstrom.tar.bz2 | tar xf -
 ```
 
-Build and run project:
+Build and run:
 
 ```bash
-./gradlew installDist
-```
-
-Run project against "broadcast A" workload:
-
-```bash
-#./gradlew installDist && ./maelstrom/maelstrom test -w broadcast --bin ./app/build/install/app/bin/app --node-count 5 --time-limit 20 --rate 10
-#./gradlew clean installDist && ./maelstrom/maelstrom test -w broadcast --bin ./app/build/install/app/bin/app --node-count 5 --time-limit 20 --rate 10 --nemesis partition --node-count 5 --time-limit 20 --rate 10
-./gradlew clean installDist && ./maelstrom/maelstrom test -w broadcast --bin ./app/build/install/app/bin/app --node-count 25 --time-limit 20 --rate 100 --latency 100
+./gradlew :broadcast:runMaelstromTest
 ```

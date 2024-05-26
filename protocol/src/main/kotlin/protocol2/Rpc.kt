@@ -1,14 +1,13 @@
 package protocol2
 
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
 class Client(
     private val io: MessageIO,
-    private val nodeId: Deferred<String>,
+    private val nodeIdProvider: suspend () -> String,
 ) {
     private val responsesByMsgId = ConcurrentHashMap<Int, CompletableDeferred<ResponseBody>>()
 
@@ -20,7 +19,7 @@ class Client(
         val response = CompletableDeferred<ResponseBody>()
         responsesByMsgId[request.msgId] = response
         try {
-            io.send(Message(nodeId.await(), dest, request))
+            io.send(Message(nodeIdProvider(), dest, request))
             return clazz.cast(response.await())
         } finally {
             responsesByMsgId.remove(request.msgId)

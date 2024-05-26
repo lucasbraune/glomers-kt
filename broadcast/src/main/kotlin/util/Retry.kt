@@ -1,4 +1,4 @@
-package glomers.util
+package util
 
 import kotlinx.coroutines.delay
 import kotlin.time.Duration

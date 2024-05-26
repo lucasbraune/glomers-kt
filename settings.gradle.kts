@@ -11,4 +11,4 @@ plugins {
 }
 
 rootProject.name = "glomers-kt"
-include("app", "list", "utilities", "protocol")
+include("app", "broadcast", "protocol", "utilities")

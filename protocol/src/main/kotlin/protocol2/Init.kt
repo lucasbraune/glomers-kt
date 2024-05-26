@@ -1,7 +1,6 @@
 package protocol2
 
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -29,13 +28,13 @@ val InitSerializersModule = SerializersModule {
 }
 
 class InitService {
-    private val _nodeId = CompletableDeferred<String>()
-    private val _nodeIds = CompletableDeferred<List<String>>()
-    val nodeId: Deferred<String> = _nodeId
-    val nodeIds: Deferred<List<String>> = _nodeIds
+    private val nodeId = CompletableDeferred<String>()
+    private val nodeIds = CompletableDeferred<List<String>>()
+    suspend fun nodeId(): String = nodeId.await()
+    suspend fun nodeIds(): List<String> = nodeIds.await()
     fun handle(message: Message<Init>): InitOk {
-        _nodeId.complete(message.body.nodeId)
-        _nodeIds.complete(message.body.nodeIds)
+        nodeId.complete(message.body.nodeId)
+        nodeIds.complete(message.body.nodeIds)
         return InitOk(message.body.msgId)
     }
 }
