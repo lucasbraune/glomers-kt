@@ -7,7 +7,7 @@ import kotlin.reflect.cast
 
 class Client(
     private val io: NodeIO,
-    private val nodeIdProvider: suspend () -> String,
+    private val initService: InitService,
 ) {
     private val responsesByMsgId = ConcurrentHashMap<Int, CompletableDeferred<ResponseBody>>()
 
@@ -19,7 +19,7 @@ class Client(
         val response = CompletableDeferred<ResponseBody>()
         responsesByMsgId[request.msgId] = response
         try {
-            io.send(Message(nodeIdProvider(), dest, request))
+            io.send(Message(initService.nodeId(), dest, request))
             return clazz.cast(response.await())
         } finally {
             responsesByMsgId.remove(request.msgId)

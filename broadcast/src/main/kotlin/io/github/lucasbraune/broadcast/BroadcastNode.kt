@@ -15,7 +15,7 @@ import io.github.lucasbraune.protocol.NodeIO
 import io.github.lucasbraune.protocol.message
 import io.github.lucasbraune.protocol.request
 import io.github.lucasbraune.protocol.rpc
-import io.github.lucasbraune.protocol.serveRoutes
+import io.github.lucasbraune.protocol.serve
 import io.github.lucasbraune.util.RetryOptions
 import io.github.lucasbraune.util.chunk
 import io.github.lucasbraune.util.retry
@@ -28,7 +28,7 @@ import kotlin.time.Duration.Companion.seconds
 class BroadcastNode {
     private val io = NodeIO(InitSerializersModule + BroadcastSerializersModule)
     private val initService = InitService()
-    private val client = Client(io, initService::nodeId)
+    private val client = Client(io, initService)
     private val msgId = AtomicInteger()
     private val topology = CompletableDeferred<Map<String, List<String>>>()
     private val messages = CopyOnWriteArrayList<Int>()
@@ -59,7 +59,7 @@ class BroadcastNode {
     }
 
     suspend fun serve() {
-        serveRoutes(io) {
+        serve(io) {
             request(initService::handle)
             message(client::handle)
             message<Broadcast> {

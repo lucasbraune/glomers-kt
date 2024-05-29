@@ -5,7 +5,7 @@ import io.github.lucasbraune.protocol.InitSerializersModule
 import io.github.lucasbraune.protocol.InitService
 import io.github.lucasbraune.protocol.NodeIO
 import io.github.lucasbraune.protocol.request
-import io.github.lucasbraune.protocol.serveRoutes
+import io.github.lucasbraune.protocol.serve
 import java.util.concurrent.atomic.AtomicInteger
 
 class GeneratorService(
@@ -24,7 +24,7 @@ suspend fun main() {
     val io = NodeIO(InitSerializersModule + UniqueIdsSerializersModule)
     val initService = InitService()
     val generatorService = GeneratorService(initService)
-    serveRoutes(io) {
+    serve(io) {
         request(initService::handle)
         request<Generate> { GenerateOk(generatorService.nextId(), it.body.msgId) }
     }

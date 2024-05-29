@@ -29,7 +29,7 @@ inline fun <reified Req : RequestBody> RouterBuilder.request(
     request(Req::class, handle)
 }
 
-private class RouterBuilderImpl(
+internal class Router(
     private val io: NodeIO
 ) : RouterBuilder {
     private data class Route(
@@ -61,12 +61,4 @@ private class RouterBuilderImpl(
             ?.handler?.invoke(message)
             ?: Log.warning("No handler registered for $message")
     }
-}
-
-suspend fun serveRoutes(
-    io: NodeIO,
-    builderAction: RouterBuilder.() -> Unit,
-) {
-    val router = RouterBuilderImpl(io).apply { builderAction() }
-    serve(io, router::handle)
 }
