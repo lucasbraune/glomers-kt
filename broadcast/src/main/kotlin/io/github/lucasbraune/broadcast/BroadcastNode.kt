@@ -11,7 +11,7 @@ import io.github.lucasbraune.protocol.InitSerializersModule
 import io.github.lucasbraune.protocol.InitService
 import io.github.lucasbraune.protocol.Log
 import io.github.lucasbraune.protocol.Message
-import io.github.lucasbraune.protocol.MessageIO
+import io.github.lucasbraune.protocol.NodeIO
 import io.github.lucasbraune.protocol.message
 import io.github.lucasbraune.protocol.request
 import io.github.lucasbraune.protocol.rpc
@@ -26,7 +26,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class BroadcastNode {
-    private val io = MessageIO(InitSerializersModule + BroadcastSerializersModule)
+    private val io = NodeIO(InitSerializersModule + BroadcastSerializersModule)
     private val initService = InitService()
     private val client = Client(io, initService::nodeId)
     private val msgId = AtomicInteger()

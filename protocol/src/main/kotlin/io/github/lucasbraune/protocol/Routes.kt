@@ -30,7 +30,7 @@ inline fun <reified Req : RequestBody> RouterBuilder.request(
 }
 
 private class RouterBuilderImpl(
-    private val io: MessageIO
+    private val io: NodeIO
 ) : RouterBuilder {
     private data class Route(
         val predicate: (message: Message<out MessageBody>) -> Boolean,
@@ -64,7 +64,7 @@ private class RouterBuilderImpl(
 }
 
 suspend fun serveRoutes(
-    io: MessageIO,
+    io: NodeIO,
     builderAction: RouterBuilder.() -> Unit,
 ) {
     val router = RouterBuilderImpl(io).apply { builderAction() }

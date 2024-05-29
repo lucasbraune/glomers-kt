@@ -6,7 +6,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.cast
 
 class Client(
-    private val io: MessageIO,
+    private val io: NodeIO,
     private val nodeIdProvider: suspend () -> String,
 ) {
     private val responsesByMsgId = ConcurrentHashMap<Int, CompletableDeferred<ResponseBody>>()

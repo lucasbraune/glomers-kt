@@ -3,7 +3,7 @@ package io.github.lucasbraune.uniqueid
 import kotlinx.serialization.modules.plus
 import io.github.lucasbraune.protocol.InitSerializersModule
 import io.github.lucasbraune.protocol.InitService
-import io.github.lucasbraune.protocol.MessageIO
+import io.github.lucasbraune.protocol.NodeIO
 import io.github.lucasbraune.protocol.request
 import io.github.lucasbraune.protocol.serveRoutes
 import java.util.concurrent.atomic.AtomicInteger
@@ -21,7 +21,7 @@ class GeneratorService(
 }
 
 suspend fun main() {
-    val io = MessageIO(InitSerializersModule + UniqueIdsSerializersModule)
+    val io = NodeIO(InitSerializersModule + UniqueIdsSerializersModule)
     val initService = InitService()
     val generatorService = GeneratorService(initService)
     serveRoutes(io) {

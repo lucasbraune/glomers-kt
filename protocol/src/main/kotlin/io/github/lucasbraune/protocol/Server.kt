@@ -10,7 +10,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 import kotlinx.serialization.modules.SerializersModule
 
-class MessageIO(
+class NodeIO(
     serializersModule: SerializersModule,
 ) {
     @OptIn(ExperimentalSerializationApi::class)
@@ -30,7 +30,7 @@ class MessageIO(
 }
 
 internal suspend fun serve(
-    io: MessageIO,
+    io: NodeIO,
     handle: suspend (message: Message<out MessageBody>) -> Unit,
 ) = coroutineScope {
     while (true) {
