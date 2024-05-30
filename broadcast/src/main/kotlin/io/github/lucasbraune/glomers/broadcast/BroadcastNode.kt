@@ -1,11 +1,5 @@
 package io.github.lucasbraune.glomers.broadcast
 
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.modules.plus
 import io.github.lucasbraune.glomers.protocol.Client
 import io.github.lucasbraune.glomers.protocol.InitSerializersModule
 import io.github.lucasbraune.glomers.protocol.InitService
@@ -18,12 +12,20 @@ import io.github.lucasbraune.glomers.protocol.serve
 import io.github.lucasbraune.util.RetryConfig
 import io.github.lucasbraune.util.batches
 import io.github.lucasbraune.util.retry
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.modules.plus
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 
 class BroadcastNode {
@@ -33,8 +35,9 @@ class BroadcastNode {
     private val msgId = AtomicInteger()
     private val topology = CompletableDeferred<Map<String, List<String>>>()
     private val messages = ConcurrentHashMap.newKeySet<Int>()
+    private val gossipOutbox = Channel<List<Int>>(UNLIMITED)
     private val cachedMessages = AtomicReference<List<Int>>(emptyList())
-    private val gossipQueue: Channel<Int> = Channel()
+    private val cacheUpdatedAt = AtomicLong(System.nanoTime())
 
     private fun nextMsgId(): Int = msgId.getAndIncrement()
 
@@ -47,26 +50,22 @@ class BroadcastNode {
                 TopologyOk(it.body.msgId)
             }
             request<Read> {
+                val now = System.nanoTime()
+                if ((now - cacheUpdatedAt.get()).nanoseconds > cacheTtl) {
+                    cachedMessages.set(messages.toList())
+                    cacheUpdatedAt.set(now)
+                }
                 ReadOk(cachedMessages.get(), it.body.msgId)
             }
             request<Broadcast> {
                 val added = messages.add(it.body.message)
-                if (added) {
-                    cachedMessages.set(messages.toList())
-                    gossipQueue.send(it.body.message)
-                }
+                if (added) gossipOutbox.send(listOf(it.body.message))
                 BroadcastOk(it.body.msgId)
             }
             request<Gossip> {
-//                Log.debug("Receiving gossip from ${it.src}: ${it.body.messages}")
                 val newMessages = it.body.messages.minus(messages)
-                val added = messages.addAll(it.body.messages)
-                if (added) {
-                    cachedMessages.set(messages.toList())
-                    for (newMessage in newMessages) {
-                        gossipQueue.send(newMessage)
-                    }
-                }
+                val added = messages.addAll(newMessages)
+                if (added) gossipOutbox.send(newMessages)
                 GossipOk(it.body.msgId)
             }
         }
@@ -74,12 +73,12 @@ class BroadcastNode {
 
     suspend fun work() = coroutineScope {
         val neighbors = topology.await()[initService.nodeId()]!!
-        for (messageBatch in batches(gossipQueue, gossipDelay)) {
-//            Log.debug("Sending gossip to $neighbors: $messageBatch")
+        for (gossipBatch in batches(gossipOutbox, gossipDelay)) {
+            val messages = gossipBatch.flatten().distinct()
             for (neighbor in neighbors) {
                 launch {
                     retry(infiniteRetryConfig) {
-                        val requestBody = Gossip(messageBatch, nextMsgId())
+                        val requestBody = Gossip(messages, nextMsgId())
                         try {
                             withTimeout(rpcTimeout) {
                                 client.rpc<GossipOk>(neighbor, requestBody)
@@ -95,7 +94,8 @@ class BroadcastNode {
     }
 
     private companion object {
-        val gossipDelay = 300.milliseconds
+        val gossipDelay = 200.milliseconds
+        val cacheTtl = 200.milliseconds
         val rpcTimeout = 300.milliseconds
         val infiniteRetryConfig = RetryConfig(
             retries = Int.MAX_VALUE,

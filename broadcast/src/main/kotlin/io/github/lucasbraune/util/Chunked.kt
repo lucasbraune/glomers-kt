@@ -3,6 +3,7 @@ package io.github.lucasbraune.util
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.delay
@@ -14,7 +15,7 @@ fun <T> CoroutineScope.batches(
     channel: ReceiveChannel<T>,
     timeBetweenBatches: Duration,
 ): ReceiveChannel<List<T>> =
-    produce {
+    produce(capacity = UNLIMITED) {
         while (true) {
             val chunk = mutableListOf<T>()
             val timer = async { delay(timeBetweenBatches) }
