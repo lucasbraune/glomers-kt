@@ -2,6 +2,7 @@ package io.github.lucasbraune.glomers.protocol
 
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
 

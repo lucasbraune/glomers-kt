@@ -10,18 +10,19 @@ import io.github.lucasbraune.glomers.protocol.Client
 import io.github.lucasbraune.glomers.protocol.InitSerializersModule
 import io.github.lucasbraune.glomers.protocol.InitService
 import io.github.lucasbraune.glomers.protocol.Log
-import io.github.lucasbraune.glomers.protocol.Message
 import io.github.lucasbraune.glomers.protocol.NodeIO
 import io.github.lucasbraune.glomers.protocol.message
 import io.github.lucasbraune.glomers.protocol.request
 import io.github.lucasbraune.glomers.protocol.rpc
 import io.github.lucasbraune.glomers.protocol.serve
-import io.github.lucasbraune.util.RetryOptions
-import io.github.lucasbraune.util.chunk
+import io.github.lucasbraune.util.RetryConfig
+import io.github.lucasbraune.util.batches
 import io.github.lucasbraune.util.retry
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.time.Duration
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -31,75 +32,72 @@ class BroadcastNode {
     private val client = Client(io, initService)
     private val msgId = AtomicInteger()
     private val topology = CompletableDeferred<Map<String, List<String>>>()
-    private val messages = CopyOnWriteArrayList<Int>()
-    private val internalBroadcastChannel: Channel<Int> = Channel()
+    private val messages = ConcurrentHashMap.newKeySet<Int>()
+    private val cachedMessages = AtomicReference<List<Int>>(emptyList())
+    private val gossipQueue: Channel<Int> = Channel()
 
-    private suspend fun leaderId(): String = initService.nodeIds().first()
-
-    suspend fun work() = coroutineScope {
-        val otherNodeIds = with(initService) {
-            nodeIds().filter { it != nodeId() }
-        }
-        val messageChunks = chunk(internalBroadcastChannel, delayBetweenBroadcasts)
-        for (messageChunk in messageChunks) {
-            Log.info("Internal broadcast: $messageChunk")
-            for (otherNodeId in otherNodeIds) {
-                launch {
-                    retry(infiniteRetries) {
-                        withTimeout(rpcTimeout) {
-                            client.rpc<InternalBroadcastOk>(
-                                otherNodeId,
-                                InternalBroadcast(messageChunk, msgId.getAndIncrement())
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+    private fun nextMsgId(): Int = msgId.getAndIncrement()
 
     suspend fun serve() {
         serve(io) {
             request(initService::handle)
             message(client::handle)
-            message<Broadcast> {
-                Log.info("Received: ${it.body.message}")
-                val added = messages.addIfAbsent(it.body.message)
-                io.send(Message(it.dest, it.src, BroadcastOk(it.body.msgId)))
-                if (added) {
-                    if (initService.nodeId() == leaderId()) {
-                        internalBroadcastChannel.send(it.body.message)
-                    } else {
-                        try {
-                            withTimeout(rpcTimeout) {
-                                client.rpc<BroadcastOk>(
-                                    leaderId(),
-                                    Broadcast(it.body.message, msgId.getAndIncrement())
-                                )
-                            }
-                        } catch (ex: Exception) {
-                            Log.warning("Unable to reach leader; broadcasting ${it.body.message}")
-                            internalBroadcastChannel.send(it.body.message)
-                        }
-                    }
-                }
-            }
-            request<InternalBroadcast> {
-                messages.addAllAbsent(it.body.messages)
-                InternalBroadcastOk(it.body.msgId)
-            }
-            request<Read> { ReadOk(messages, it.body.msgId) }
             request<Topology> {
                 topology.complete(it.body.topology)
                 TopologyOk(it.body.msgId)
+            }
+            request<Read> {
+                ReadOk(cachedMessages.get(), it.body.msgId)
+            }
+            request<Broadcast> {
+                val added = messages.add(it.body.message)
+                if (added) {
+                    cachedMessages.set(messages.toList())
+                    gossipQueue.send(it.body.message)
+                }
+                BroadcastOk(it.body.msgId)
+            }
+            request<Gossip> {
+//                Log.debug("Receiving gossip from ${it.src}: ${it.body.messages}")
+                val newMessages = it.body.messages.minus(messages)
+                val added = messages.addAll(it.body.messages)
+                if (added) {
+                    cachedMessages.set(messages.toList())
+                    for (newMessage in newMessages) {
+                        gossipQueue.send(newMessage)
+                    }
+                }
+                GossipOk(it.body.msgId)
+            }
+        }
+    }
+
+    suspend fun work() = coroutineScope {
+        val neighbors = topology.await()[initService.nodeId()]!!
+        for (messageBatch in batches(gossipQueue, gossipDelay)) {
+//            Log.debug("Sending gossip to $neighbors: $messageBatch")
+            for (neighbor in neighbors) {
+                launch {
+                    retry(infiniteRetryConfig) {
+                        val requestBody = Gossip(messageBatch, nextMsgId())
+                        try {
+                            withTimeout(rpcTimeout) {
+                                client.rpc<GossipOk>(neighbor, requestBody)
+                            }
+                        } catch (ex: CancellationException) {
+                            Log.error("Request to $neighbor timed out: $requestBody")
+                            throw ex
+                        }
+                    }
+                }
             }
         }
     }
 
     private companion object {
-        val delayBetweenBroadcasts: Duration = 300.milliseconds
+        val gossipDelay = 300.milliseconds
         val rpcTimeout = 300.milliseconds
-        val infiniteRetries = RetryOptions(
+        val infiniteRetryConfig = RetryConfig(
             retries = Int.MAX_VALUE,
             backoff = 200.milliseconds,
             backoffMultiplier = 2.0,

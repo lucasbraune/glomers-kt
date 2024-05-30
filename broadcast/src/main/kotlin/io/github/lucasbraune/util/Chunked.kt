@@ -10,14 +10,14 @@ import kotlinx.coroutines.selects.whileSelect
 import kotlin.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <T> CoroutineScope.chunk(
+fun <T> CoroutineScope.batches(
     channel: ReceiveChannel<T>,
-    timeBetweenChunks: Duration,
+    timeBetweenBatches: Duration,
 ): ReceiveChannel<List<T>> =
     produce {
         while (true) {
             val chunk = mutableListOf<T>()
-            val timer = async { delay(timeBetweenChunks) }
+            val timer = async { delay(timeBetweenBatches) }
             whileSelect {
                 channel.onReceiveCatching {
                     if (it.isSuccess) {

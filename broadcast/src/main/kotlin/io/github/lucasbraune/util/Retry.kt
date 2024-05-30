@@ -3,7 +3,7 @@ package io.github.lucasbraune.util
 import kotlinx.coroutines.delay
 import kotlin.time.Duration
 
-data class RetryOptions(
+data class RetryConfig(
     val retries: Int,
     val backoff: Duration = Duration.ZERO,
     val backoffMultiplier: Double = 1.0,
@@ -11,7 +11,7 @@ data class RetryOptions(
 )
 
 suspend fun <T> retry(
-    options: RetryOptions,
+    options: RetryConfig,
     block: suspend () -> T,
 ): T {
     var backoff = options.backoff

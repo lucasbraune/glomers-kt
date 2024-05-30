@@ -49,15 +49,15 @@ data class TopologyOk(
 ) : ResponseBody
 
 @Serializable
-@SerialName("internal_broadcast")
-data class InternalBroadcast(
+@SerialName("gossip")
+data class Gossip(
     val messages: List<Int>,
     override val msgId: Int,
 ) : RequestBody
 
 @Serializable
-@SerialName("internal_broadcast_ok")
-data class InternalBroadcastOk(
+@SerialName("gossip_ok")
+data class GossipOk(
     override val inReplyTo: Int,
 ) : ResponseBody
 
@@ -69,7 +69,7 @@ val BroadcastSerializersModule = SerializersModule {
         subclass(ReadOk::class)
         subclass(Topology::class)
         subclass(TopologyOk::class)
-        subclass(InternalBroadcast::class)
-        subclass(InternalBroadcastOk::class)
+        subclass(Gossip::class)
+        subclass(GossipOk::class)
     }
 }
