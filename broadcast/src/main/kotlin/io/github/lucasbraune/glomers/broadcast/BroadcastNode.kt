@@ -1,4 +1,4 @@
-package io.github.lucasbraune.broadcast
+package io.github.lucasbraune.glomers.broadcast
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
@@ -6,16 +6,16 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.modules.plus
-import io.github.lucasbraune.protocol.Client
-import io.github.lucasbraune.protocol.InitSerializersModule
-import io.github.lucasbraune.protocol.InitService
-import io.github.lucasbraune.protocol.Log
-import io.github.lucasbraune.protocol.Message
-import io.github.lucasbraune.protocol.NodeIO
-import io.github.lucasbraune.protocol.message
-import io.github.lucasbraune.protocol.request
-import io.github.lucasbraune.protocol.rpc
-import io.github.lucasbraune.protocol.serve
+import io.github.lucasbraune.glomers.protocol.Client
+import io.github.lucasbraune.glomers.protocol.InitSerializersModule
+import io.github.lucasbraune.glomers.protocol.InitService
+import io.github.lucasbraune.glomers.protocol.Log
+import io.github.lucasbraune.glomers.protocol.Message
+import io.github.lucasbraune.glomers.protocol.NodeIO
+import io.github.lucasbraune.glomers.protocol.message
+import io.github.lucasbraune.glomers.protocol.request
+import io.github.lucasbraune.glomers.protocol.rpc
+import io.github.lucasbraune.glomers.protocol.serve
 import io.github.lucasbraune.util.RetryOptions
 import io.github.lucasbraune.util.chunk
 import io.github.lucasbraune.util.retry

@@ -1,4 +1,4 @@
-package io.github.lucasbraune.protocol
+package io.github.lucasbraune.glomers.protocol
 
 import kotlinx.serialization.Serializable
 

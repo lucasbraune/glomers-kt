@@ -1,9 +1,9 @@
-package io.github.lucasbraune.protocol
+package io.github.lucasbraune.glomers.protocol
 
-import io.github.lucasbraune.protocol.Level.DEBUG
-import io.github.lucasbraune.protocol.Level.ERROR
-import io.github.lucasbraune.protocol.Level.INFO
-import io.github.lucasbraune.protocol.Level.WARNING
+import io.github.lucasbraune.glomers.protocol.Level.DEBUG
+import io.github.lucasbraune.glomers.protocol.Level.ERROR
+import io.github.lucasbraune.glomers.protocol.Level.INFO
+import io.github.lucasbraune.glomers.protocol.Level.WARNING
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 

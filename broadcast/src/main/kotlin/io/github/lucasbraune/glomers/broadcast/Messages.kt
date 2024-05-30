@@ -1,16 +1,16 @@
-package io.github.lucasbraune.broadcast
+package io.github.lucasbraune.glomers.broadcast
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
-import io.github.lucasbraune.protocol.MessageBody
-import io.github.lucasbraune.protocol.RequestBody
-import io.github.lucasbraune.protocol.ResponseBody
+import io.github.lucasbraune.glomers.protocol.MessageBody
+import io.github.lucasbraune.glomers.protocol.RequestBody
+import io.github.lucasbraune.glomers.protocol.ResponseBody
 
 @Serializable
-@SerialName("io/github/lucasbraune/broadcast")
+@SerialName("broadcast")
 data class Broadcast(
     val message: Int,
     override val msgId: Int,

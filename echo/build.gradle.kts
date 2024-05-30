@@ -12,7 +12,7 @@ dependencies {
 
 application {
     // Define the main class for the application.
-    mainClass.set("io.github.lucasbraune.echo.AppKt")
+    mainClass.set("io.github.lucasbraune.glomers.echo.AppKt")
 }
 
 val maelstromBinary = project.rootDir.resolve("maelstrom/maelstrom")

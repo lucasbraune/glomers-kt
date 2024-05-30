@@ -1,4 +1,4 @@
-package io.github.lucasbraune.broadcast
+package io.github.lucasbraune.glomers.broadcast
 
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch

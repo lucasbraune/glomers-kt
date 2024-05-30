@@ -1,11 +1,11 @@
-package io.github.lucasbraune.uniqueid
+package io.github.lucasbraune.glomers.uniqueid
 
 import kotlinx.serialization.modules.plus
-import io.github.lucasbraune.protocol.InitSerializersModule
-import io.github.lucasbraune.protocol.InitService
-import io.github.lucasbraune.protocol.NodeIO
-import io.github.lucasbraune.protocol.request
-import io.github.lucasbraune.protocol.serve
+import io.github.lucasbraune.glomers.protocol.InitSerializersModule
+import io.github.lucasbraune.glomers.protocol.InitService
+import io.github.lucasbraune.glomers.protocol.NodeIO
+import io.github.lucasbraune.glomers.protocol.request
+import io.github.lucasbraune.glomers.protocol.serve
 import java.util.concurrent.atomic.AtomicInteger
 
 class GeneratorService(
