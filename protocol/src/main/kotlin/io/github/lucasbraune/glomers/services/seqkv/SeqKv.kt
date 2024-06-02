@@ -1,13 +1,9 @@
 package io.github.lucasbraune.glomers.services.seqkv
 
-import io.github.lucasbraune.glomers.protocol.MessageBody
 import io.github.lucasbraune.glomers.protocol.RequestBody
 import io.github.lucasbraune.glomers.protocol.ResponseBody
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 @Serializable
 @SerialName("read")

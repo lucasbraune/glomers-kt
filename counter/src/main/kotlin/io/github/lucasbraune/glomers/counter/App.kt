@@ -2,7 +2,6 @@ package io.github.lucasbraune.glomers.counter
 
 import io.github.lucasbraune.glomers.protocol.Client
 import io.github.lucasbraune.glomers.protocol.ErrorCodes
-import io.github.lucasbraune.glomers.protocol.Init
 import io.github.lucasbraune.glomers.protocol.InitService
 import io.github.lucasbraune.glomers.protocol.Log
 import io.github.lucasbraune.glomers.protocol.NodeIO
@@ -34,10 +33,9 @@ class Node {
     private val client = Client(io, initService)
     private val msgId = AtomicInteger()
     private val value = AtomicInteger(INITIAL_VALUE)
-    private val remoteValue = AtomicInteger(INITIAL_VALUE)
 
     suspend fun serve() = serve(io) {
-        request<Init>(initService::handle)
+        request(initService::handle)
         message(client::handle)
         request<Add> {
             value.addAndGet(it.body.delta)
@@ -49,22 +47,28 @@ class Node {
     }
 
     suspend fun sync() {
-        val shouldInitStore = initService.nodeId() == initService.nodeIds().first()
-        if (shouldInitStore) {
-            write(value.get())
+        val shouldInitKvStore = initService.nodeId() == initService.nodeIds().first()
+        if (shouldInitKvStore) {
+            write(INITIAL_VALUE)
         }
+        var remoteValue = INITIAL_VALUE
         while (true) {
+            delay(syncPeriod)
             try {
-                val newRemoteValue = read() ?: continue
-                val oldRemoteValue = remoteValue.getAndSet(newRemoteValue)
-                val newLocalValue = value.addAndGet(newRemoteValue - oldRemoteValue)
-                cas(newRemoteValue, newLocalValue)?.let { errorCode ->
-                    Log.error("CAS failed with error $errorCode")
+                val oldRemoteValue = remoteValue
+                remoteValue = read() ?: continue
+                val newLocalValue = value.addAndGet(remoteValue - oldRemoteValue)
+                if (remoteValue != newLocalValue) {
+                    val error = cas(remoteValue, newLocalValue)
+                    if (error == null) {
+                        remoteValue = newLocalValue
+                    } else {
+                        Log.error("CAS failed with error code $error")
+                    }
                 }
             } catch (exception: Throwable) {
                 Log.error(exception)
             }
-            delay(syncPeriod)
         }
     }
 
@@ -79,7 +83,7 @@ class Node {
                 if (response.code == ErrorCodes.KEY_DOES_NOT_EXIST) {
                     null
                 } else {
-                    throw Exception("Kv-Read failed with response $response")
+                    throw Exception("Kv-Read failed with error $response")
                 }
             }
             else -> throw Exception("Unexpected response: $response")

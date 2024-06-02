@@ -30,8 +30,7 @@ tasks.register<Exec>("runMaelstromTest") {
         "-w", "g-counter",
         "--bin", nodeBinary.absolutePath,
         "--node-count", "3",
-//        "--rate", "100",
-        "--rate", "10",
+        "--rate", "100",
         "--time-limit", "20",
         "--nemesis", "partition",
     )
