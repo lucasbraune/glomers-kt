@@ -52,15 +52,4 @@ data class CompareAndSetOk(
     override val inReplyTo: Int,
 ) : ResponseBody
 
-val CounterSerializersModule = SerializersModule {
-    polymorphic(MessageBody::class) {
-        subclass(Read::class)
-        subclass(ReadOk::class)
-        subclass(Write::class)
-        subclass(WriteOk::class)
-        subclass(CompareAndSet::class)
-        subclass(CompareAndSetOk::class)
-    }
-}
-
 const val SEQ_KV_NODE_ID = "seq-kv"

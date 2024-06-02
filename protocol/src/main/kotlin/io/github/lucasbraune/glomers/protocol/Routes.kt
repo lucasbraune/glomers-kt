@@ -57,8 +57,11 @@ internal class Router(
     }
 
     suspend fun handle(message: Message<out MessageBody>) {
-        routes.firstOrNull { it.predicate(message) }
-            ?.handler?.invoke(message)
-            ?: Log.warning("No handler registered for $message")
+        val route = routes.firstOrNull { it.predicate(message) }
+        if (route != null) {
+            route.handler(message)
+        } else {
+            Log.warning("No handler registered for $message")
+        }
     }
 }
