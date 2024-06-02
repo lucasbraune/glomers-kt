@@ -49,6 +49,7 @@ class Node {
     suspend fun sync() {
         val shouldInitKvStore = initService.nodeId() == initService.nodeIds().first()
         if (shouldInitKvStore) {
+            // TODO: Add retries
             write(INITIAL_VALUE)
         }
         var remoteValue = INITIAL_VALUE
@@ -63,6 +64,7 @@ class Node {
                     if (error == null) {
                         remoteValue = newLocalValue
                     } else {
+                        // TODO: Handle case where CAS may have been processed by service
                         Log.error("CAS failed with error code $error")
                     }
                 }
@@ -86,6 +88,7 @@ class Node {
                     throw Exception("Kv-Read failed with error $response")
                 }
             }
+
             else -> throw Exception("Unexpected response: $response")
         }
     }
