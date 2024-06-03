@@ -11,6 +11,13 @@ data class RpcError(
     val text: String,
 ): ResponseBody
 
+class RpcException(
+    val code: Int,
+    message: String
+): Exception("RPC error $code: $message")
+
+fun RpcError.toException() = RpcException(code, text)
+
 /**
  * Semantics: https://github.com/jepsen-io/maelstrom/blob/main/doc/protocol.md#errors
  */

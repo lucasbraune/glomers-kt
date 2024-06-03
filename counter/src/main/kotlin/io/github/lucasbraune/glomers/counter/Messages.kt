@@ -2,19 +2,17 @@ package io.github.lucasbraune.glomers.counter
 
 import io.github.lucasbraune.glomers.protocol.Init
 import io.github.lucasbraune.glomers.protocol.InitOk
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import io.github.lucasbraune.glomers.protocol.MessageBody
 import io.github.lucasbraune.glomers.protocol.RequestBody
 import io.github.lucasbraune.glomers.protocol.ResponseBody
-import io.github.lucasbraune.glomers.protocol.RpcError
-import io.github.lucasbraune.glomers.services.seqkv.CompareAndSet
-import io.github.lucasbraune.glomers.services.seqkv.CompareAndSetOk
-import io.github.lucasbraune.glomers.services.seqkv.Write
-import io.github.lucasbraune.glomers.services.seqkv.WriteOk
+import io.github.lucasbraune.glomers.seqkv.SeqKvRequestSerializers
+import io.github.lucasbraune.glomers.seqkv.SeqKvResponseSerializers
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.plus
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 
 @Serializable
 @SerialName("add")
@@ -42,35 +40,21 @@ data class ReadOk(
     val value: Int,
 ) : ResponseBody
 
-val CounterInputSerializers = SerializersModule {
+private val ServerRequestSerializers = SerializersModule {
     polymorphic(MessageBody::class) {
-        // Init request
         subclass(Init::class)
-
-        // Counter requests
         subclass(Add::class)
         subclass(Read::class)
-
-        // SeqKv responses
-        subclass(io.github.lucasbraune.glomers.services.seqkv.ReadOk::class)
-        subclass(WriteOk::class)
-        subclass(CompareAndSetOk::class)
-        subclass(RpcError::class)
     }
 }
 
-val CounterOutputSerializers = SerializersModule {
+private val ServerResponseSerializers = SerializersModule {
     polymorphic(MessageBody::class) {
-        // Init response
         subclass(InitOk::class)
-
-        // Counter responses
         subclass(AddOk::class)
         subclass(ReadOk::class)
-
-        // SeqKv requests
-        subclass(io.github.lucasbraune.glomers.services.seqkv.Read::class)
-        subclass(Write::class)
-        subclass(CompareAndSet::class)
     }
 }
+
+val CounterInputSerializers = ServerRequestSerializers + SeqKvResponseSerializers
+val CounterOutputSerializers = ServerResponseSerializers + SeqKvRequestSerializers
