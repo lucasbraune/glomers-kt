@@ -2,11 +2,15 @@ package io.github.lucasbraune.glomers.counter
 
 import io.github.lucasbraune.glomers.protocol.Client
 import io.github.lucasbraune.glomers.protocol.InitService
+import io.github.lucasbraune.glomers.protocol.Log
 import io.github.lucasbraune.glomers.protocol.NodeIO
+import io.github.lucasbraune.glomers.protocol.RpcException
 import io.github.lucasbraune.glomers.protocol.message
 import io.github.lucasbraune.glomers.protocol.request
 import io.github.lucasbraune.glomers.protocol.serve
 import io.github.lucasbraune.glomers.seqkv.SeqKvStore
+import io.github.lucasbraune.util.RetryOptions
+import io.github.lucasbraune.util.retry
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.coroutineScope
@@ -21,45 +25,55 @@ class Node {
     private val initService = InitService()
     private val client = Client(io, initService)
     private val msgId = AtomicInteger()
-    private val kvStore = SeqKvStore<String, Int>(client, msgId::getAndIncrement)
-    private val value = AtomicInteger(INITIAL_VALUE)
+    private val kvStore = SeqKvStore<String, Map<String, Int>>(client, msgId::getAndIncrement)
+    /** Sum of values in [Add] requests to this node. */
+    private val localSum = AtomicInteger()
+    /** Sum of values in [Add] requests to other nodes. */
+    private val remoteSum = AtomicInteger()
 
     suspend fun serve() = serve(io) {
         request(initService::handle)
         message(client::handle)
         request<Add> {
-            value.addAndGet(it.body.delta)
+            localSum.addAndGet(it.body.delta)
             AddOk(it.body.msgId)
         }
         request<Read> {
-            ReadOk(it.body.msgId, value.get())
+            ReadOk(it.body.msgId, localSum.get() + remoteSum.get())
         }
     }
 
     suspend fun sync() {
-        val shouldInitKvStore = initService.nodeId() == initService.nodeIds().first()
-        if (shouldInitKvStore) {
-            kvStore.write(COUNTER_KEY, INITIAL_VALUE)
+        val nodeId = initService.nodeId()
+        val nodeIds = initService.nodeIds()
+        if (nodeId == nodeIds.first()) {
+            retry(retryOptions) {
+                kvStore.write(KEY, nodeIds.associateWith { 0 })
+            }
         }
-        var remoteValue = INITIAL_VALUE
         while (true) {
             delay(syncPeriod)
-            runCatching {
-                val oldRemoteValue = remoteValue
-                remoteValue = kvStore.read(COUNTER_KEY)
-                val newLocalValue = value.addAndGet(remoteValue - oldRemoteValue)
-                if (remoteValue != newLocalValue) {
-                    kvStore.compareAndSet(COUNTER_KEY, remoteValue, newLocalValue)
-                    remoteValue = newLocalValue
+            try {
+                // Pull
+                val sums = kvStore.read(KEY)
+                val newRemoteSum = sums.filter { it.key != nodeId }.values.sum()
+                remoteSum.set(newRemoteSum)
+                // Push
+                val newSums = buildMap {
+                    putAll(sums)
+                    put(nodeId, localSum.get())
                 }
+                kvStore.compareAndSet(KEY, sums, newSums)
+            } catch (exception: RpcException) {
+                Log.error(exception)
             }
         }
     }
 
     private companion object {
-        const val COUNTER_KEY = "counter"
-        const val INITIAL_VALUE = 0
+        const val KEY = "counter"
         val syncPeriod = 300.milliseconds
+        val retryOptions = RetryOptions(3, backoff = 200.milliseconds)
     }
 }
 
