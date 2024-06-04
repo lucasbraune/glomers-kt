@@ -22,7 +22,7 @@ class MessagesTest {
     }
 
     @Test
-    fun `test poll_ok body serializes correctly`() {
+    fun `test poll_ok body serializes`() {
         val pollOk = PollOk(
             inReplyTo = 1,
             msgs = mapOf(
